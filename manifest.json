@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "IOC Extractor",
+  "version": "1.0.0",
+  "description": "Lets grab those pesky IOCs",
+  "permissions": [
+    "activeTab",
+    "scripting"
+    ],
+    "host_permissions": [
+        "*://*.example.com/"
+    ],
+  "action":{
+    "default_popup": "popup.html",
+    "default_title": "Choose IOC type"
+  }
+}
