@@ -62,3 +62,4 @@ function downloadUniqueIpAddresses(uniqueIpAddresses) {
     
     URL.revokeObjectURL(url);
 }
+
