@@ -15,8 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 displayUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris);
                 // Initiate the download action when button is clicked
-                document.getElementById('downloadButton').addEventListener('click', function() {
-                    downloadUniqueIpAddresses(uniqueIpAddresses);
+                document.getElementById('extractButton').addEventListener('click', function() {
+                    downloadUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris);
                 });
             });
         });
