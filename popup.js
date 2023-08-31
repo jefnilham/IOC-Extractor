@@ -1,6 +1,13 @@
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('extractButton').addEventListener('click', function() {
-        // Query the currently active tab in the Chrome browser
+    const extractedDataContainer = document.getElementById('extractedData');
+    const extractButton = document.getElementById('extractButton');
+    const downloadButton = document.getElementById('downloadButton');
+    let extractedData = {
+        ipAddresses: [],
+        urlsAndUris: []
+    };
+
+    extractButton.addEventListener('click', function() {
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             const activeTab = tabs[0];
             chrome.scripting.executeScript({
@@ -8,22 +15,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 function: extractText
             }, function(results) {
                 const extractedText = results[0].result;
-                const extractedData = extractIpAddressAndUrl(extractedText);
-                console.log(extractedData)
-                const uniqueIpAddresses = extractedData.ipAddresses;
-                const uniqueUrlsAndUris = extractedData.urlsAndUris;
-
-                displayUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris);
-                // Initiate the download action when button is clicked
-                document.getElementById('extractButton').addEventListener('click', function() {
-                    downloadUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris);
-                });
+                const extracted = extractIpAddressAndUrl(extractedText);
+                extractedData.ipAddresses.push(...extracted.ipAddresses);
+                extractedData.urlsAndUris.push(...extracted.urlsAndUris);
+                displayUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
             });
         });
     });
+
+    downloadButton.addEventListener('click', function() {
+        downloadUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
+    });
+
+    function displayUniqueIpAddressesAndUrls(ipAddresses, urlsAndUris) {
+        extractedDataContainer.innerHTML = '';
+
+        ipAddresses.forEach(ip => {
+            const div = createItemDiv(ip, 'IP Address');
+            extractedDataContainer.appendChild(div);
+        });
+
+        urlsAndUris.forEach(url => {
+            const div = createItemDiv(url, 'URL/URI');
+            extractedDataContainer.appendChild(div);
+        });
+    }
+
+    function createItemDiv(value, label) {
+        const div = document.createElement('div');
+        const text = document.createElement('span');
+        text.textContent = value;
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', function() {
+            removeItem(value);
+        });
+
+        div.appendChild(text);
+        div.appendChild(removeButton);
+
+        return div;
+    }
+
+    function removeItem(value) {
+        extractedData.ipAddresses = extractedData.ipAddresses.filter(ip => ip !== value);
+        extractedData.urlsAndUris = extractedData.urlsAndUris.filter(url => url !== value);
+        displayUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
+    }
 });
-
-
 
 function extractText() {
     const allText = document.body.innerText;
@@ -64,27 +104,6 @@ function extractIpAddressAndUrl(text) {
     }
 }
 
-function displayUniqueIpAddressesAndUrls(ipAddresses, urlsAndUris) {
-    const extractedDataPre = document.getElementById('extractedData');
-    
-    // Create hyperlinks for each unique IP address
-    const ipLinks = ipAddresses.map(ip => {
-        const shodanUrl = `https://www.shodan.io/host/${ip}`;
-        return `<a href="${shodanUrl}" target="_blank">${ip}</a>`;
-    });
-
-    // Create hyperlinks for each unique URL/URI
-    const urlAndUriLinks = urlsAndUris.map(url => {
-        return `<a href="${url}" target="_blank">${url}</a>`;
-    });
-
-    // Combine IP links and URL/URI links
-    const allLinks = ipLinks.concat(urlAndUriLinks);
-
-    extractedDataPre.innerHTML = allLinks.join('<br>');
-}
-
-
 function downloadUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris) {
     const allData = [...uniqueIpAddresses, ...uniqueUrlsAndUris];
     const dataText = allData.join('\n');
@@ -100,5 +119,3 @@ function downloadUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris) 
 
     URL.revokeObjectURL(url);
 }
-
-
