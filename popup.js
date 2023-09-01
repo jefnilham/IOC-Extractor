@@ -1,25 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     const extractedDataContainer = document.getElementById('extractedData');
-    const extractButton = document.getElementById('extractButton');
     const downloadButton = document.getElementById('downloadButton');
     let extractedData = {
         ipAddresses: [],
         urlsAndUris: []
     };
 
-    extractButton.addEventListener('click', function() {
-        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-            const activeTab = tabs[0];
-            chrome.scripting.executeScript({
-                target: { tabId: activeTab.id },
-                function: extractText
-            }, function(results) {
-                const extractedText = results[0].result;
-                const extracted = extractIpAddressAndUrl(extractedText);
-                extractedData.ipAddresses.push(...extracted.ipAddresses);
-                extractedData.urlsAndUris.push(...extracted.urlsAndUris);
-                displayUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
-            });
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        const activeTab = tabs[0];
+        chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            function: extractText
+        }, function(results) {
+            const extractedText = results[0].result;
+            const extracted = extractIpAddressAndUrl(extractedText);
+            extractedData.ipAddresses.push(...extracted.ipAddresses);
+            extractedData.urlsAndUris.push(...extracted.urlsAndUris);
+            displayUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
         });
     });
 
