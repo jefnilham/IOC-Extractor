@@ -26,12 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function displayUniqueIpAddressesAndUrls(ipAddresses, urlsAndUris) {
         extractedDataContainer.innerHTML = '';
-
+    
         ipAddresses.forEach(ip => {
             const div = createItemDiv(ip, 'IP Address');
             extractedDataContainer.appendChild(div);
         });
-
+    
         urlsAndUris.forEach(url => {
             const div = createItemDiv(url, 'URL/URI');
             extractedDataContainer.appendChild(div);
@@ -40,18 +40,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createItemDiv(value, label) {
         const div = document.createElement('div');
-        const text = document.createElement('span');
-        text.textContent = value;
-
+        
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
         removeButton.addEventListener('click', function() {
             removeItem(value);
         });
-
-        div.appendChild(text);
+    
+        const text = document.createElement('span');
+        text.textContent = value;
+    
         div.appendChild(removeButton);
-
+        div.appendChild(text);
+    
         return div;
     }
 
