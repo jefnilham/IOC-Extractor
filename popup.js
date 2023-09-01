@@ -16,8 +16,11 @@ function extractDataFromTab(tabId) {
         extractedData.ipAddresses.push(...extracted.ipAddresses);
         extractedData.urlsAndUris.push(...extracted.urlsAndUris);
 
+        // Clear the extractedMatches array
+        extractedMatches = [];
+
         // Extract matches from the extracted text
-        extractedMatches = extractedText.match(/(\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3}|https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b)/g) || [];
+        extractedMatches.push(...extractedText.match(/(\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3}|https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b)/g) || []);
 
         // Display the extracted data
         displayMatches();
@@ -29,8 +32,11 @@ function displayMatches() {
     const extractedDataContainer = document.getElementById('extractedData');
     extractedDataContainer.innerHTML = '';
 
-    // Iterate through matches and create divs
-    extractedMatches.forEach(match => {
+    // Filter extractedMatches to unique values
+    const uniqueMatches = [...new Set(extractedMatches)];
+
+    // Iterate through unique matches and create divs
+    uniqueMatches.forEach(match => {
         const div = createItemDiv(match, " ");
         extractedDataContainer.appendChild(div);
     });
