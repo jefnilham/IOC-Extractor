@@ -1,7 +1,8 @@
 // Define global variables
 let extractedData = {
     ipAddresses: [],
-    urlsAndUris: []
+    urlsAndUris: [],
+    hashes: []
 };
 let extractedMatches = [];
 
@@ -12,15 +13,17 @@ function extractDataFromTab(tabId) {
         function: extractText
     }, function(results) {
         const extractedText = results[0].result;
-        const extracted = extractIpAddressAndUrl(extractedText);
+        const extracted = extractIpAddressAndUrlAndHashes(extractedText);
+
+        // Extracted data is added in the order it's found
         extractedData.ipAddresses.push(...extracted.ipAddresses);
         extractedData.urlsAndUris.push(...extracted.urlsAndUris);
+        extractedData.hashes.push(...extracted.hashes);
 
-        // Clear the extractedMatches array
         extractedMatches = [];
 
         // Extract matches from the extracted text
-        extractedMatches.push(...extractedText.match(/(\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3}|https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b)/g) || []);
+        extractedMatches.push(...extractedText.match(/(\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3}|https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b|\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b)/g) || []);
 
         // Display the extracted data
         displayMatches();
@@ -72,6 +75,7 @@ function removeItem(value) {
 function removeFromExtractedData(value) {
     extractedData.ipAddresses = extractedData.ipAddresses.filter(ip => ip !== value);
     extractedData.urlsAndUris = extractedData.urlsAndUris.filter(url => url !== value);
+    extractedData.hashes = extractedData.hashes.filter(hash => hash !== value)
 }
 
 // Function to extract text from the active tab
@@ -80,44 +84,82 @@ function extractText() {
     return allText;
 }
 
-// Function to extract IP addresses and URLs from text
-function extractIpAddressAndUrl(text) {
+// Function to extract IP addresses, URLs, and Hashes from text
+function extractIpAddressAndUrlAndHashes(text) {
     const ipAddressPattern = /\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3})\b/g;
     const ipAddresses = text.match(ipAddressPattern);
 
     const urlAndUriPattern = /\b(?:https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b/g;
     const urlsAndUris = text.match(urlAndUriPattern);
 
-    if (ipAddresses && urlsAndUris) {
+    const hashPattern = /\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b/g;
+    const hashes = text.match(hashPattern)
+
+    if (ipAddresses && urlsAndUris && hashes) {
+        const uniqueIpAddresses = [...new Set(ipAddresses)];
+        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
+        const uniqueHashes = [...new Set(hashes)];
+        return {
+            ipAddresses: uniqueIpAddresses,
+            urlsAndUris: uniqueUrlsAndUris,
+            hashes: uniqueHashes
+        };
+    } else if (ipAddresses && urlsAndUris) {
         const uniqueIpAddresses = [...new Set(ipAddresses)];
         const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
         return {
             ipAddresses: uniqueIpAddresses,
-            urlsAndUris: uniqueUrlsAndUris
+            urlsAndUris: uniqueUrlsAndUris,
+            hashes: []
         };
+    } else if (ipAddresses && hashes) {
+        const uniqueIpAddresses = [...new Set(ipAddresses)];
+        const uniqueHashes = [...new Set(hashes)];
+        return {
+            ipAddresses: uniqueIpAddresses,
+            urlsAndUris: [],
+            hashes: uniqueHashes
+        };
+    } else if (urlsAndUris && hashes) {
+        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
+        const uniqueHashes = [...new Set(hashes)];
+        return {
+            ipAddresses: [],
+            urlsAndUris: uniqueUrlsAndUris,
+            hashes: uniqueHashes
+        }
     } else if (ipAddresses) {
         const uniqueIpAddresses = [...new Set(ipAddresses)];
         return {
             ipAddresses: uniqueIpAddresses,
-            urlsAndUris: []
+            urlsAndUris: [],
+            hashes: []
         };
     } else if (urlsAndUris) {
         const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
         return {
             ipAddresses: [],
-            urlsAndUris: uniqueUrlsAndUris
+            urlsAndUris: uniqueUrlsAndUris,
+            hashes: []
+        };
+    } else if (hashes) {
+        const uniqueHashes = [...new Set(hashes)];
+        return {
+            ipAddresses: [],
+            urlsAndUris: [],
+            hashes: uniqueHashes
         };
     } else {
         return {
             ipAddresses: [],
-            urlsAndUris: []
+            urlsAndUris: [],
+            hashes: []
         };
     }
 }
 
 // Event listener when popup is opened
 document.addEventListener('DOMContentLoaded', function() {
-    const extractedDataContainer = document.getElementById('extractedData');
     const downloadButton = document.getElementById('downloadButton');
     let activeTab; // Define activeTab here
 
@@ -128,28 +170,44 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     downloadButton.addEventListener('click', function() {
-        downloadUniqueIpAddressesAndUrls(extractedData.ipAddresses, extractedData.urlsAndUris);
-    });
+        // Combine all the data into a single array
+        const allData = extractedMatches.slice();
 
-    function downloadUniqueIpAddressesAndUrls(uniqueIpAddresses, uniqueUrlsAndUris) {
-        const allData = [...uniqueIpAddresses, ...uniqueUrlsAndUris];
-        const dataText = allData.join('\n');
-        const blob = new Blob([dataText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        // Filter out duplicates and maintain order
+        const uniqueData = [];
+        const uniqueSet = new Set();
 
-        // Get the TLD from the active tab's URL
-        const tld = new URL(activeTab.url).hostname.split('.').slice(-2).join('.');
+        for (const item of allData) {
+            if (!uniqueSet.has(item)) {
+                uniqueSet.add(item);
+                uniqueData.push(item);
+            }
+        }
+
+        // Create a text file with the correct content
+        const dataText = uniqueData.join('\n');
 
         // Generate a filename using the TLD and current epoch time
+        const tld = new URL(activeTab.url).hostname.split('.').slice(-2).join('.');
         const filename = `${tld}_${Date.now()}.txt`;
 
+        // Create a blob with the text data
+        const blob = new Blob([dataText], { type: 'text/plain' });
+
+        // Create a URL for the blob
+        const url = URL.createObjectURL(blob);
+
+        // Create an invisible anchor element to trigger the download
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
+
+        // Trigger the download
         a.click();
 
+        // Clean up the URL object
         URL.revokeObjectURL(url);
-    }
+    });
 });
