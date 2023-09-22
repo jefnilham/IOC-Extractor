@@ -2,9 +2,29 @@
 let extractedData = {
     ipAddresses: [],
     urlsAndUris: [],
-    hashes: []
+    hashes: [],
+    cves: []
 };
 let extractedMatches = [];
+
+const patterns = {
+    ipAddresses: /\b(?:\d{1,3}(?:\.\d{1,3}|\[\.\]){3}\d{1,3}|\d{1,3}(?:\[\.\]\d{1,3}){3}|\d{1,3}(?:\.\d{1,3}){3})\b/g,
+    urlsAndUris: /\b(?:https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+\[[.]\][a-zA-Z]{2,}|[a-zA-Z]:\\[^\\]+\\[^\\]+\\[^\\]+\\[^\\]+\.[a-zA-Z0-9]+|\/[^\s/]+(?:\/[^\s/]+)*|\\\\[^\\]+\\[^\\]+(?:\\[^\\]+)+\\[^\s/]+\.[a-zA-Z0-9]+)\b/g,
+    hashes: /\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b/g,
+    cves: /\bCVE-\d{4}-\d{4,7}\b/g
+};
+
+// Union pattern for IP addresses, URLs/URIs, and hashes
+const unionPattern = new RegExp(
+    patterns.ipAddresses.source + '|' +
+    patterns.urlsAndUris.source + '|' +
+    patterns.hashes.source + '|' +
+    patterns.cves.source,
+    'g'
+  );
+  
+
+
 
 // Function to extract data from the active tab
 function extractDataFromTab(tabId) {
@@ -19,13 +39,14 @@ function extractDataFromTab(tabId) {
         extractedData.ipAddresses.push(...extracted.ipAddresses);
         extractedData.urlsAndUris.push(...extracted.urlsAndUris);
         extractedData.hashes.push(...extracted.hashes);
-
+        extractedData.cves.push(...extracted.cves)
+        console.log("Extracted Data:", extractedData);
         extractedMatches = [];
 
         // Extract matches from the extracted text
-        extractedMatches.push(...extractedText.match(/(\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3}|https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b|\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b)/g) || []);
-
+        extractedMatches.push(...(extractedText.match(unionPattern) || []));
         // Display the extracted data
+        console.log("Extracted Matches:", extractedMatches);
         displayMatches();
     });
 }
@@ -76,86 +97,32 @@ function removeFromExtractedData(value) {
     extractedData.ipAddresses = extractedData.ipAddresses.filter(ip => ip !== value);
     extractedData.urlsAndUris = extractedData.urlsAndUris.filter(url => url !== value);
     extractedData.hashes = extractedData.hashes.filter(hash => hash !== value)
+    extractedData.cves = extractedData.cves.filter(cves => cves !== value)
 }
 
 // Function to extract text from the active tab
 function extractText() {
     const allText = document.body.innerText;
+    console.log(allText)
     return allText;
 }
 
 // Function to extract IP addresses, URLs, and Hashes from text
 function extractIpAddressAndUrlAndHashes(text) {
-    const ipAddressPattern = /\b(?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\[\.\]\d{1,3})\b/g;
-    const ipAddresses = text.match(ipAddressPattern);
 
-    const urlAndUriPattern = /\b(?:https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})\b/g;
-    const urlsAndUris = text.match(urlAndUriPattern);
+    const extractedData = {};
 
-    const hashPattern = /\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b/g;
-    const hashes = text.match(hashPattern)
-
-    if (ipAddresses && urlsAndUris && hashes) {
-        const uniqueIpAddresses = [...new Set(ipAddresses)];
-        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
-        const uniqueHashes = [...new Set(hashes)];
-        return {
-            ipAddresses: uniqueIpAddresses,
-            urlsAndUris: uniqueUrlsAndUris,
-            hashes: uniqueHashes
-        };
-    } else if (ipAddresses && urlsAndUris) {
-        const uniqueIpAddresses = [...new Set(ipAddresses)];
-        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
-        return {
-            ipAddresses: uniqueIpAddresses,
-            urlsAndUris: uniqueUrlsAndUris,
-            hashes: []
-        };
-    } else if (ipAddresses && hashes) {
-        const uniqueIpAddresses = [...new Set(ipAddresses)];
-        const uniqueHashes = [...new Set(hashes)];
-        return {
-            ipAddresses: uniqueIpAddresses,
-            urlsAndUris: [],
-            hashes: uniqueHashes
-        };
-    } else if (urlsAndUris && hashes) {
-        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
-        const uniqueHashes = [...new Set(hashes)];
-        return {
-            ipAddresses: [],
-            urlsAndUris: uniqueUrlsAndUris,
-            hashes: uniqueHashes
+    for (const key in patterns) {
+        const pattern = patterns[key];
+        const matches = text.match(pattern);
+        if (matches) {
+            extractedData[key] = [...new Set(matches)];
+        } else {
+            extractedData[key] = [];
         }
-    } else if (ipAddresses) {
-        const uniqueIpAddresses = [...new Set(ipAddresses)];
-        return {
-            ipAddresses: uniqueIpAddresses,
-            urlsAndUris: [],
-            hashes: []
-        };
-    } else if (urlsAndUris) {
-        const uniqueUrlsAndUris = [...new Set(urlsAndUris)];
-        return {
-            ipAddresses: [],
-            urlsAndUris: uniqueUrlsAndUris,
-            hashes: []
-        };
-    } else if (hashes) {
-        const uniqueHashes = [...new Set(hashes)];
-        return {
-            ipAddresses: [],
-            urlsAndUris: [],
-            hashes: uniqueHashes
-        };
-    } else {
-        return {
-            ipAddresses: [],
-            urlsAndUris: [],
-            hashes: []
-        };
     }
+
+    return extractedData;
 }
 
 // Event listener when popup is opened
