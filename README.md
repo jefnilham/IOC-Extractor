@@ -1,5 +1,5 @@
 # IOC-Extractor
-Chrome extension that extracts possible common types of IOCs such as URLs, IPv4s, filenames, hashes (MD5, SHA1, SHA256). User can view the extracted data and remove any unwanted IOCs in the displayed popup. User can download the remaining IOCs as a text file automatically named after domain of active tab. Made for analysts who scrape through OSINT reports.
+Chrome extension that extracts possible common types of IOCs such as URLs, IPv4s, filenames, hashes (MD5, SHA1, SHA256). User can view the extracted data and remove any unwanted IOCs in the displayed popup. User can download the remaining IOCs as a text file automatically named after domain of active tab. Made for analysts who scrape through OSINT reports that don't have a specific 'IOC' section/download.
 
 | Intended Extraction Type | Known False Positives (Unintended Extractions) |
 |--------------------|----------|
