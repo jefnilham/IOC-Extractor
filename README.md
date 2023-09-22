@@ -10,8 +10,8 @@ Has false positives, depending on how the site sanitises IOCs, whether there are
 3. Hashes
 MD5, SHA1, SHA256. Accurate.
 
-| Extraction Type | Intended Extraction | Known False Positives |
-|----------|----------|----------|
-| IP Address | Row 1, Column 2 | Row 1, Column 3 |
-| URIs, URLs, Domains, Filenames, Filepaths | Row 2, Column 2 | Row 2, Column 3 |
-| Hashes | Row 2, Column 2 | Row 2, Column 3 |
+| Extraction Type & Intended Extraction | Known False Positives |
+|--------------------|----------|
+| IP Address | Row 1, Column 3 |
+| URIs, URLs, Domains, Filenames, Filepaths | Row 2, Column 3 |
+| Hashes | Row 2, Column 3 |
