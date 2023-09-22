@@ -6,3 +6,4 @@ Chrome extension that extracts possible common types of IOCs such as URLs, IPv4s
 | IP Address | Version numbers |
 | URIs, URLs, Domains, Filenames, Filepaths | Files with spaces, formatting on site |
 | Hashes | - |
+| CVEs | - |
