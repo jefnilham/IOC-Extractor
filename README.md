@@ -9,4 +9,4 @@ Chrome extension that extracts possible common types of IOCs such as URLs, IPv4s
 | CVEs | - |
 
 Known issues:
-1. Still cant get from raw files on browser as it wont get extracted in allText. DOM related. Probably need to make http request and parse the response. :(
+1. Still cant get from raw files on browser as it wont get extracted in allText. DOM related. Probably need to make http request and parse the response. 
