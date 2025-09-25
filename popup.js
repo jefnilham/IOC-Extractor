@@ -62,18 +62,38 @@ function displayMatches() {
     const extractedDataContainer = document.getElementById('extractedData');
     extractedDataContainer.innerHTML = '';
 
-    // Use unique matches to avoid duplicates
-    const uniqueMatches = [...new Set(extractedMatches)];
+    const categories = {
+        hashes: 'Hashes',
+        ipAddresses: 'IP Addresses',
+        urlsAndUris: 'Domains / URLs',
+        cves: 'CVEs'
+    };
 
-    uniqueMatches.forEach(match => {
-        // Find corresponding marker id for jump (use first one found)
-        const marker = markersInfo.find(m => m.ioc === match);
-        const id = marker ? marker.id : null;
+    for (const key in categories) {
+        const label = categories[key];
+        const items = extractedData[key];
 
-        const div = createItemDiv(match, " ", id);
-        extractedDataContainer.appendChild(div);
-    });
+        if (items.length === 0) continue;
+
+        const section = document.createElement('div');
+        section.className = 'ioc-section';
+
+        const title = document.createElement('h3');
+        title.textContent = label;
+        section.appendChild(title);
+
+        items.forEach(match => {
+            const marker = markersInfo.find(m => m.ioc === match);
+            const id = marker ? marker.id : null;
+
+            const div = createItemDiv(match, '', id);
+            section.appendChild(div);
+        });
+
+        extractedDataContainer.appendChild(section);
+    }
 }
+
 
 // Create div for each IOC with Remove and Jump buttons
 function createItemDiv(value, label, markerId) {
@@ -275,30 +295,35 @@ document.addEventListener('DOMContentLoaded', function() {
         extractDataFromTab(activeTab.id);
     });
 
-    downloadButton.addEventListener('click', function() {
-        // Combine all the data into a single array
-        const allData = extractedMatches.slice();
+    downloadButton.addEventListener('click', function () {
+        const categories = {
+            hashes: 'Hashes',
+            ipAddresses: 'IP Addresses',
+            urlsAndUris: 'Domains / URLs',
+            cves: 'CVEs'
+        };
 
-        // Filter out duplicates and maintain order
-        const uniqueData = [];
-        const uniqueSet = new Set();
+        let content = '';
 
-        for (const item of allData) {
-            if (!uniqueSet.has(item)) {
-                uniqueSet.add(item);
-                uniqueData.push(item);
-            }
+        for (const key in categories) {
+            const label = categories[key];
+            const items = extractedData[key];
+
+            if (items.length === 0) continue;
+
+            content += `${label}:\n`;
+            items.forEach(item => {
+                content += `${item}\n`;
+            });
+            content += '\n'; // Add a blank line between categories
         }
-
-        // Create a text file with the correct content
-        const dataText = uniqueData.join('\n');
 
         // Generate a filename using the TLD and current epoch time
         const tld = new URL(activeTab.url).hostname.split('.').slice(-2).join('.');
         const filename = `${tld}_${Date.now()}.txt`;
 
-        // Create a blob with the text data
-        const blob = new Blob([dataText], { type: 'text/plain' });
+        // Create a blob with the formatted text
+        const blob = new Blob([content], { type: 'text/plain' });
 
         // Create a URL for the blob
         const url = URL.createObjectURL(blob);
@@ -313,7 +338,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Trigger the download
         a.click();
 
-        // Clean up the URL object
+        // Clean up
         URL.revokeObjectURL(url);
     });
+
 });
