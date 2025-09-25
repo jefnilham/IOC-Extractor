@@ -6,6 +6,7 @@ let extractedData = {
     cves: []
 };
 let extractedMatches = [];
+let markersInfo = []; // store { ioc, id } for jump buttons
 
 const patterns = {
     ipAddresses: /\b(?:\d{1,3}(?:\.\d{1,3}|\[\.\]){3}\d{1,3}|\d{1,3}(?:\[\.\]\d{1,3}){3}|\d{1,3}(?:\.\d{1,3}){3})\b/g,
@@ -14,60 +15,68 @@ const patterns = {
     cves: /\bCVE-\d{4}-\d{4,7}\b/g
 };
 
-// Union pattern for IP addresses, URLs/URIs, and hashes
+// Union pattern for extracting matches from the returned marker list
 const unionPattern = new RegExp(
     patterns.ipAddresses.source + '|' +
     patterns.urlsAndUris.source + '|' +
     patterns.hashes.source + '|' +
     patterns.cves.source,
     'g'
-  );
-  
+);
 
-
-
-// Function to extract data from the active tab
+// Extract data from the active tab
 function extractDataFromTab(tabId) {
     chrome.scripting.executeScript({
         target: { tabId: tabId },
-        function: extractText
+        function: extractTextWithMarkers
     }, function(results) {
-        const extractedText = results[0].result;
-        const extracted = extractIpAddressAndUrlAndHashes(extractedText);
+        // results[0].result is an array of { ioc, id }
+        markersInfo = results[0].result;
 
-        // Extracted data is added in the order it's found
-        extractedData.ipAddresses.push(...extracted.ipAddresses);
-        extractedData.urlsAndUris.push(...extracted.urlsAndUris);
-        extractedData.hashes.push(...extracted.hashes);
-        extractedData.cves.push(...extracted.cves)
-        console.log("Extracted Data:", extractedData);
+        // Extract unique IOCs by type from markersInfo
+        extractedData = {
+            ipAddresses: [],
+            urlsAndUris: [],
+            hashes: [],
+            cves: []
+        };
         extractedMatches = [];
 
-        // Extract matches from the extracted text
-        extractedMatches.push(...(extractedText.match(unionPattern) || []));
-        // Display the extracted data
-        console.log("Extracted Matches:", extractedMatches);
+        for (const { ioc } of markersInfo) {
+            extractedMatches.push(ioc);
+        }
+
+        // Extract categorized data for internal usage
+        const categorized = extractIpAddressAndUrlAndHashes(extractedMatches.join(' '));
+        extractedData = categorized;
+
+        console.log("Extracted Data:", extractedData);
+        console.log("Markers Info:", markersInfo);
+
         displayMatches();
     });
 }
 
-// Function to display matches
+// Display matches in popup with Remove + Jump buttons
 function displayMatches() {
     const extractedDataContainer = document.getElementById('extractedData');
     extractedDataContainer.innerHTML = '';
 
-    // Filter extractedMatches to unique values
+    // Use unique matches to avoid duplicates
     const uniqueMatches = [...new Set(extractedMatches)];
 
-    // Iterate through unique matches and create divs
     uniqueMatches.forEach(match => {
-        const div = createItemDiv(match, " ");
+        // Find corresponding marker id for jump (use first one found)
+        const marker = markersInfo.find(m => m.ioc === match);
+        const id = marker ? marker.id : null;
+
+        const div = createItemDiv(match, " ", id);
         extractedDataContainer.appendChild(div);
     });
 }
 
-// Function to create a div for a match
-function createItemDiv(value, label) {
+// Create div for each IOC with Remove and Jump buttons
+function createItemDiv(value, label, markerId) {
     const div = document.createElement('div');
 
     const removeButton = document.createElement('button');
@@ -76,39 +85,62 @@ function createItemDiv(value, label) {
         removeItem(value);
     });
 
+    div.appendChild(removeButton);
+
+    if (markerId) {
+        const jumpButton = document.createElement('button');
+        jumpButton.textContent = 'Jump to IOC';
+        jumpButton.addEventListener('click', function() {
+            jumpToMarker(markerId);
+        });
+        div.appendChild(jumpButton);
+    }
+
     const text = document.createElement('span');
     text.textContent = label + value;
-
-    div.appendChild(removeButton);
     div.appendChild(text);
 
     return div;
 }
 
-// Function to remove an item from the displayed and extracted matches
+// Remove item from extractedMatches and extractedData
 function removeItem(value) {
     extractedMatches = extractedMatches.filter(match => match !== value);
     removeFromExtractedData(value);
     displayMatches();
 }
 
-// Function to remove an item from extractedData
+// Remove from extractedData categories
 function removeFromExtractedData(value) {
     extractedData.ipAddresses = extractedData.ipAddresses.filter(ip => ip !== value);
     extractedData.urlsAndUris = extractedData.urlsAndUris.filter(url => url !== value);
-    extractedData.hashes = extractedData.hashes.filter(hash => hash !== value)
-    extractedData.cves = extractedData.cves.filter(cves => cves !== value)
+    extractedData.hashes = extractedData.hashes.filter(hash => hash !== value);
+    extractedData.cves = extractedData.cves.filter(cve => cve !== value);
 }
 
-// Function to extract text from the active tab
-function extractText() {
-    const allText = document.body.innerText;
-    console.log(allText)
-    return allText;
+// Scroll the page to the marker element by id
+function jumpToMarker(markerId) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            function: (id) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Optionally highlight the element briefly
+                    el.style.transition = 'background-color 0.5s ease';
+                    el.style.backgroundColor = 'yellow';
+                    setTimeout(() => { el.style.backgroundColor = ''; }, 1500);
+                }
+            },
+            args: [markerId]
+        });
+    });
 }
 
-// Function to extract IP addresses, URLs, and Hashes from text
+// Extract IP addresses, URLs, hashes, and CVEs from text array or string
 function extractIpAddressAndUrlAndHashes(text) {
+    if (Array.isArray(text)) text = text.join(' ');
 
     const extractedData = {};
 
@@ -125,14 +157,121 @@ function extractIpAddressAndUrlAndHashes(text) {
     return extractedData;
 }
 
-// Event listener when popup is opened
+// This runs inside the page context to inject markers and return array of matches + ids
+function extractTextWithMarkers() {
+    const patternsArray = [
+        { key: 'ipAddresses', pattern: /\b(?:\d{1,3}(?:\.\d{1,3}|\[\.\]){3}\d{1,3}|\d{1,3}(?:\[\.\]\d{1,3}){3}|\d{1,3}(?:\.\d{1,3}){3})\b/g },
+        { key: 'urlsAndUris', pattern: /\b(?:https?:\/\/[^\s/$.?#].[^\s]*|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|[a-zA-Z0-9-]+\[[.]\][a-zA-Z]{2,}|[a-zA-Z]:\\[^\\]+\\[^\\]+\\[^\\]+\\[^\\]+\.[a-zA-Z0-9]+|\/[^\s/]+(?:\/[^\s/]+)*|\\\\[^\\]+\\[^\\]+(?:\\[^\\]+)+\\[^\s/]+\.[a-zA-Z0-9]+)\b/g },
+        { key: 'hashes', pattern: /\b[0-9a-fA-F]{32}\b|\b[0-9a-fA-F]{40}\b|\b[0-9a-fA-F]{64}\b/g },
+        { key: 'cves', pattern: /\bCVE-\d{4}-\d{4,7}\b/g }
+    ];
+
+    // Walk text nodes and replace matches with <span> markers with unique IDs
+    function walkNodes(node) {
+        // Skip unwanted nodes
+        if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            ['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE'].includes(node.tagName)
+        ) {
+            return; // skip script, style, code blocks, preformatted text
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Only process text nodes that have visible text and whose parent is visible
+            const parent = node.parentElement;
+            if (!parent) return;
+
+            // Skip if parent or any ancestor is hidden (display:none or visibility:hidden)
+            let el = parent;
+            while (el && el !== document.body) {
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden') {
+                    return;
+                }
+                el = el.parentElement;
+            }
+
+            let text = node.nodeValue;
+            let matches = [];
+
+            // Collect all matches from all patterns
+            patternsArray.forEach(({ pattern }) => {
+                pattern.lastIndex = 0;
+                let m;
+                while ((m = pattern.exec(text)) !== null) {
+                    matches.push({ index: m.index, length: m[0].length, text: m[0] });
+                }
+            });
+
+            if (matches.length === 0) return;
+
+            // Sort matches by index ascending
+            matches.sort((a, b) => a.index - b.index);
+
+            // Filter overlapping matches, keep first
+            let filteredMatches = [];
+            let lastEnd = -1;
+            for (const match of matches) {
+                if (match.index >= lastEnd) {
+                    filteredMatches.push(match);
+                    lastEnd = match.index + match.length;
+                }
+            }
+
+            // Rebuild the node with inserted span markers
+            const fragment = document.createDocumentFragment();
+            let lastPos = 0;
+
+            filteredMatches.forEach(({ index, length, text }) => {
+                // Add text before match
+                if (index > lastPos) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastPos, index)));
+                }
+
+                // Add matched text wrapped in span with unique id
+                const span = document.createElement('span');
+                span.textContent = text;
+                span.className = 'ioc-marker';
+                const uniqueId = `ioc-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+                span.id = uniqueId;
+                span.setAttribute('data-ioc', text);
+                fragment.appendChild(span);
+
+                lastPos = index + length;
+            });
+
+            // Add remaining text
+            if (lastPos < text.length) {
+                fragment.appendChild(document.createTextNode(text.substring(lastPos)));
+            }
+
+            // Replace original text node with new fragment
+            node.parentNode.replaceChild(fragment, node);
+        } else if (node.nodeType === Node.ELEMENT_NODE && node.childNodes) {
+            // recurse on children
+            Array.from(node.childNodes).forEach(child => walkNodes(child));
+        }
+    }
+
+
+    walkNodes(document.body);
+
+    // Gather all markers with their ioc text and ids
+    const markers = Array.from(document.querySelectorAll('.ioc-marker')).map(el => ({
+        ioc: el.getAttribute('data-ioc'),
+        id: el.id
+    }));
+
+    return markers;
+}
+
+// When popup loads
 document.addEventListener('DOMContentLoaded', function() {
     const downloadButton = document.getElementById('downloadButton');
-    let activeTab; // Define activeTab here
+    let activeTab;
 
-    // Get the active tab and extract data
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-        activeTab = tabs[0]; // Update the value of activeTab
+        activeTab = tabs[0];
         extractDataFromTab(activeTab.id);
     });
 
