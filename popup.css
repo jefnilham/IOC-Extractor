@@ -1,0 +1,81 @@
+/* Reset & Base */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background: #f4f7fa;
+  margin: 0;
+  padding: 0;
+  width: 400px;
+  color: #333;
+  font-size: 13px; /* smaller global font */
+}
+
+/* Container */
+#popup-container {
+  padding: 12px;
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 0;
+  color: #2c3e50;
+}
+
+.primary-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primary-btn:hover {
+  background-color: #0056b3;
+}
+
+/* IOC Output Area */
+.ioc-output {
+  background: white;
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 80px;
+  max-height: 280px;
+  overflow-x: auto;
+  overflow-y: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  font-family: Consolas, monospace;
+  font-size: 12px;         /* compact */
+  white-space: pre;        /* keeps formatting */
+  word-break: normal;      /* avoid breaking inside words */
+}
+
+/* Footer */
+footer {
+  margin-top: 10px;
+  font-size: 11px;
+  text-align: center;
+  color: #666;
+}
+
+footer a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}

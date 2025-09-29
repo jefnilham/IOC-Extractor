@@ -1,11 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-   <title>Text Extractor</title>
+  <meta charset="UTF-8" />
+  <title>IOC Extractor</title>
+  <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-   <button id="downloadButton">Download</button>
-   <pre id="extractedData"></pre>
-   <script src="popup.js"></script>
+  <div id="popup-container">
+    <header>
+      <h2>IOC Extractor</h2>
+      <button id="downloadButton" class="primary-btn">⬇ Download</button>
+    </header>
+
+    <div id="extractedData" class="ioc-output">
+      <!-- IOCs will be injected here -->
+    </div>
+
+    <footer>
+      <p>By @jefnilham — <a href="https://github.com/jefnilham/IOC-Extractor" target="_blank">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
 </html>
